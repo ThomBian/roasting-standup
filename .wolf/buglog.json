@@ -1,4 +1,41 @@
 {
   "version": 1,
-  "bugs": []
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-05-13T15:12:00+02:00",
+      "error_message": "Cards and stats are not vertically aligned",
+      "file": "src/App.css",
+      "root_cause": "Summary stat cards and summary list used different effective content widths, so rows did not align on the same vertical guides.",
+      "fix": "Set .summary-body to align-items: stretch with max-width: 440px and made .summary-list width: 100% so cards and rows share the same layout width.",
+      "tags": ["ui", "alignment", "summary", "css"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T15:12:00+02:00"
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-05-13T15:14:00+02:00",
+      "error_message": "Participant names in summary should be left aligned",
+      "file": "src/App.css",
+      "root_cause": "Summary rows inherited centered text behavior from higher-level layout styles.",
+      "fix": "Added `text-align: left` to `.summary-name` so participant names align to the left edge of their column.",
+      "tags": ["ui", "alignment", "summary", "typography"],
+      "related_bugs": ["bug-001"],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T15:14:00+02:00"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-05-13T15:15:00+02:00",
+      "error_message": "Progress bars should take all available horizontal space",
+      "file": "src/App.css",
+      "root_cause": "Summary container and stat row were constrained to a 440px max width, reducing bar lane width on larger available space.",
+      "fix": "Removed max-width constraints from `.summary-body` and `.summary-stats`, allowing summary rows and bars to stretch to the full available content width.",
+      "tags": ["ui", "layout", "progress-bar", "summary"],
+      "related_bugs": ["bug-001"],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T15:15:00+02:00"
+    }
+  ]
 }

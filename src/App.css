@@ -109,6 +109,15 @@
   text-align: center;
 }
 
+/* Running phase: full-bleed stage */
+.main--stage {
+  max-width: 100%;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
 /* ── IDLE: Landing ────────────────────────────────── */
 .landing {
   display: flex;
@@ -465,7 +474,7 @@
 .summary-body {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: var(--space-5);
   width: 100%;
 }
@@ -498,6 +507,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  width: 100%;
 }
 
 .summary-item {
@@ -517,13 +527,14 @@
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--text);
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .summary-bar-wrap {
-  background: var(--surface-2);
+  background: color-mix(in oklch, var(--surface-2) 78%, var(--accent) 22%);
   height: 6px;
   border-radius: 99px;
   overflow: hidden;
@@ -531,7 +542,11 @@
 
 .summary-bar {
   height: 100%;
-  background: var(--surface-3);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--accent) 82%, oklch(0.92 0.06 90) 18%),
+    color-mix(in oklch, var(--current) 78%, var(--accent) 22%)
+  );
   border-radius: 99px;
   transform-origin: left;
   animation: bar-grow 0.55s var(--ease-out) both;
@@ -551,7 +566,6 @@
   display: flex;
   gap: var(--space-3);
   width: 100%;
-  max-width: 440px;
 }
 
 
