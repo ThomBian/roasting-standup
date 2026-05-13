@@ -99,6 +99,78 @@ function pickEmoji(past2min) {
   return set[Math.floor(Math.random() * set.length)]
 }
 
+// ── Count-up hook ─────────────────────────────────
+function useCountUp(targetMs, duration = 750, delayMs = 0) {
+  const [value, setValue] = useState(0)
+  useEffect(() => {
+    if (targetMs === 0) return
+    let rafId
+    const timeoutId = setTimeout(() => {
+      let startTime = null
+      const animate = (ts) => {
+        if (!startTime) startTime = ts
+        const progress = Math.min((ts - startTime) / duration, 1)
+        const eased = 1 - Math.pow(1 - progress, 4)
+        setValue(Math.round(targetMs * eased))
+        if (progress < 1) rafId = requestAnimationFrame(animate)
+      }
+      rafId = requestAnimationFrame(animate)
+    }, delayMs)
+    return () => { clearTimeout(timeoutId); cancelAnimationFrame(rafId) }
+  }, [targetMs, duration, delayMs])
+  return value
+}
+
+function AnimatedTime({ ms, delay = 0, className = 'summary-time' }) {
+  const current = useCountUp(ms, 750, delay)
+  return <span className={className}>{ms > 0 ? formatTime(current) : '—'}</span>
+}
+
+// ── Celebration burst on done screen ──────────────
+const BURST_COLORS = [
+  'oklch(0.76 0.15 72)',  // amber (--accent)
+  'oklch(0.70 0.17 38)',  // coral (--current)
+  'oklch(0.82 0.14 72)',  // light amber
+  'oklch(0.62 0.12 55)',  // warm gold mid
+]
+
+function CelebrationBurst() {
+  const dots = useRef(
+    Array.from({ length: 22 }, (_, i) => {
+      const angle = (360 / 22) * i + (Math.random() - 0.5) * 15
+      const dist  = 70 + Math.random() * 110
+      const rad   = (angle * Math.PI) / 180
+      return {
+        id:    i,
+        tx:    Math.cos(rad) * dist,
+        ty:    Math.sin(rad) * dist,
+        size:  3 + Math.random() * 5,
+        color: BURST_COLORS[i % BURST_COLORS.length],
+        delay: Math.random() * 0.06,
+      }
+    })
+  ).current
+
+  return (
+    <div className="celebration-burst" aria-hidden="true">
+      {dots.map(d => (
+        <span
+          key={d.id}
+          className="celebration-dot"
+          style={{
+            '--tx':    `${d.tx}px`,
+            '--ty':    `${d.ty}px`,
+            width:     `${d.size}px`,
+            height:    `${d.size}px`,
+            background: d.color,
+            animationDelay: `${d.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 function EasterEggs({ elapsed }) {
   const [particles, setParticles] = useState([])
   const [roast, setRoast]         = useState(null)
@@ -438,14 +510,19 @@ export default function App() {
 
   const maxMs = speakerSummary[0]?.ms ?? 0
   const totalMs = Object.values(speakerTimes).reduce((a, b) => a + b, 0)
-  const avgMs = speakerSummary.filter(s => s.ms > 0).length > 0
-    ? totalMs / speakerSummary.filter(s => s.ms > 0).length
-    : 0
+  const spoke = speakerSummary.filter(s => s.ms > 0)
+  const avgMs = spoke.length > 0 ? totalMs / spoke.length : 0
+  const mvpItem = spoke[spoke.length - 1] ?? null
+  const overtimeItem = speakerSummary[0]?.ms > 0 ? speakerSummary[0] : null
+  const showMvp = spoke.length >= 2 && mvpItem && avgMs > 0 && mvpItem.ms < avgMs * 0.55
+  const showOvertime = spoke.length >= 2 && overtimeItem && avgMs > 0
+    && overtimeItem.ms > avgMs * 1.8 && overtimeItem.ms > 60_000
   const skippedNames = rotation.filter(r => r.status === 'skipped').map(r => r.name)
 
   return (
     <div className="app">
       {phase === 'running' && <EasterEggs elapsed={elapsed} />}
+      {phase === 'done'    && <CelebrationBurst />}
       <header className="header">
         <div className="header-inner">
           <div className="logo">
@@ -603,17 +680,41 @@ export default function App() {
             <div className="summary-header">
               <p className="summary-title">That's everyone.</p>
               <p className="summary-sub">
-                Standup took {formatTime(totalMs)} total
-                {avgMs > 0 && ` · avg ${formatTime(avgMs)} per person`}
+                Standup took <AnimatedTime ms={totalMs} delay={120} className="summary-time-inline" /> total
+                {avgMs > 0 && <> · avg <AnimatedTime ms={avgMs} delay={220} className="summary-time-inline" /> per person</>}
               </p>
               {totalMs > 0 && (
                 <p className="summary-verdict">{standupVerdict(totalMs)}</p>
               )}
             </div>
 
+            <div className="summary-body">
+            {(showMvp || showOvertime) && (
+              <div className="summary-stats">
+                {showMvp && (
+                  <div className="summary-stat-card summary-stat-card--mvp" style={{ '--stat-i': 0 }}>
+                    <span className="stat-emoji">🎖️</span>
+                    <span className="stat-label">MVP</span>
+                    <span className="stat-name">{mvpItem.name}</span>
+                    <AnimatedTime ms={mvpItem.ms} delay={300} className="stat-time" />
+                    <span className="stat-caption">most concise</span>
+                  </div>
+                )}
+                {showOvertime && (
+                  <div className="summary-stat-card summary-stat-card--overtime" style={{ '--stat-i': showMvp ? 1 : 0 }}>
+                    <span className="stat-emoji">🗣️</span>
+                    <span className="stat-label">Overtime</span>
+                    <span className="stat-name">{overtimeItem.name}</span>
+                    <AnimatedTime ms={overtimeItem.ms} delay={showMvp ? 380 : 300} className="stat-time" />
+                    <span className="stat-caption">most talkative</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <ul className="summary-list">
               {speakerSummary.map((s, i) => (
-                <li key={s.name} className={`summary-item${i === 0 && s.ms > 0 ? ' summary-item--top' : ''}`}>
+                <li key={s.name} className="summary-item" style={{ '--i': i }}>
                   <span className="summary-name">{s.name}</span>
                   <div className="summary-bar-wrap">
                     <div
@@ -621,20 +722,26 @@ export default function App() {
                       style={{ width: maxMs > 0 ? `${(s.ms / maxMs) * 100}%` : '0%' }}
                     />
                   </div>
-                  <span className="summary-time">{s.ms > 0 ? formatTime(s.ms) : '—'}</span>
-                  {i === 0 && s.ms > 0 && <span className="summary-top-badge">most talkative</span>}
+                  <AnimatedTime ms={s.ms} delay={Math.round((0.38 + i * 0.08) * 1000)} />
                 </li>
               ))}
-              {skippedNames.map(name => (
-                <li key={name} className="summary-item summary-item--skipped">
+              {skippedNames.map((name, i) => (
+                <li key={name} className="summary-item summary-item--skipped" style={{ '--i': speakerSummary.length + i }}>
                   <span className="summary-name">{name}</span>
                   <div className="summary-bar-wrap" />
                   <span className="summary-time">away</span>
                 </li>
               ))}
             </ul>
+            </div>
 
-            <button className="btn btn-ghost" onClick={resetStandup}>New standup</button>
+            <button
+              className="btn btn-ghost"
+              style={{ '--list-len': speakerSummary.length + skippedNames.length }}
+              onClick={resetStandup}
+            >
+              New standup
+            </button>
           </div>
         )}
       </main>
