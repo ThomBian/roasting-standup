@@ -362,6 +362,11 @@ export default function App() {
     setElapsed(prevTime)
   }, [])
 
+  const prevSpeaker = useCallback(() => {
+    const lastDone = [...rotationRef.current].reverse().find(r => r.status === 'done' || r.status === 'skipped')
+    if (lastDone) selectSpeaker(lastDone.id)
+  }, [selectSpeaker])
+
   const advanceSpeaker = useCallback((skip = false) => {
     const duration = speakerStartRef.current ? Date.now() - speakerStartRef.current : 0
     const current = currentItemRef.current
@@ -538,13 +543,6 @@ export default function App() {
                   : `${participants.length} people on deck.`}
               </p>
             </div>
-            {participants.length > 0 && (
-              <div className="team-pills">
-                {rotation.map(r => (
-                  <span key={r.id} className="team-pill">{r.name}</span>
-                ))}
-              </div>
-            )}
             <button
               className="btn btn-start-landing"
               onClick={startStandup}
@@ -567,7 +565,7 @@ export default function App() {
             onSelect={selectSpeaker}
             onSkipQueued={skipQueued}
             onNext={() => advanceSpeaker(false)}
-            onSkip={() => advanceSpeaker(true)}
+            onPrev={prevSpeaker}
           />
         )}
 

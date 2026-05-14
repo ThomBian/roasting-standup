@@ -80,7 +80,7 @@ function AmbientCanvas({ elapsed }) {
 // ── Main stage ───────────────────────────────────────────
 export default function StandupStage({
   rotation, elapsed, speakerTimes, shaking, epicRemark,
-  doneCount, activeCount, onSelect, onSkipQueued, onNext, onSkip,
+  doneCount, activeCount, onSelect, onSkipQueued, onNext, onPrev,
 }) {
   const activeCardRef = useRef(null)
   const trayRef       = useRef(null)
@@ -96,16 +96,11 @@ export default function StandupStage({
   }, [doneItems.length])
 
   const handleNext = useCallback(() => onNext(), [onNext])
-  const handleSkip = useCallback(() => onSkip(), [onSkip])
+  const handlePrev = useCallback(() => onPrev(), [onPrev])
 
   return (
     <div className={`stage-od${shaking ? ' stage-od--shake' : ''}`}>
       <AmbientCanvas elapsed={elapsed} />
-
-      {/* Progress counter */}
-      <div className="stage-od-progress" aria-live="polite">
-        {doneCount + 1} / {activeCount}
-      </div>
 
       {/* Active speaker area */}
       <div className="active-slot">
@@ -120,12 +115,26 @@ export default function StandupStage({
               <div className="pcard-time">{fmtTime(elapsed)}</div>
             </div>
             <div className="pcard-name-lg">{currentItem.name}</div>
-            <div className="pcard-speaking-badge">speaking</div>
           </div>
         ) : (
           <p className="stage-prompt">tap a name to start</p>
         )}
       </div>
+
+      {/* Action row — skip / finish below active card */}
+      {currentItem && (
+        <div className="stage-action-row">
+          {pendingItems.length === 0 ? (
+            <button className="stage-finish-btn" onClick={handleNext}>
+              Finish standup
+            </button>
+          ) : (
+            <button className="stage-skip-btn" onClick={handleNext}>
+              Skip
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Bottom tray — scrollable strip */}
       <div ref={trayRef} className="bottom-tray" role="list" aria-label="Rotation queue">
@@ -163,7 +172,7 @@ export default function StandupStage({
             aria-label={`${item.name} — click to start`}
             role="listitem"
           >
-            <div className="pcard-pos">{i + 1}</div>
+            <div className="pcard-pos">{rotation.findIndex(r => r.id === item.id) + 1}</div>
             <div className="pcard-name-sm">{item.name}</div>
             <button
               className="pcard-queue-skip"
@@ -175,18 +184,30 @@ export default function StandupStage({
         ))}
       </div>
 
+      {doneItems.length > 0 && (
+        <button
+          className="stage-edge-trigger stage-edge-trigger--prev"
+          onClick={handlePrev}
+          aria-label="Previous speaker"
+        >
+          <span className="stage-edge-glyph">‹</span>
+        </button>
+      )}
+
+      {currentItem && pendingItems.length > 0 && (
+        <button
+          className="stage-edge-trigger stage-edge-trigger--next"
+          onClick={handleNext}
+          aria-label="Next speaker"
+        >
+          <span className="stage-edge-glyph">›</span>
+        </button>
+      )}
+
       {epicRemark && (
         <div className="epic-remark" key={epicRemark}>{epicRemark}</div>
       )}
 
-      {currentItem && (
-        <div className="stage-od-controls">
-          <button className="btn btn-ghost" onClick={handleSkip}>Skip</button>
-          <button className="btn btn-primary btn-next-large" onClick={handleNext}>
-            {pendingItems.length > 0 ? 'Next →' : 'Finish'}
-          </button>
-        </div>
-      )}
     </div>
   )
 }
