@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import './App.css'
 import { QUOTES, EGGS, ROASTS, LONG_SPEAKER_REMARKS, STANDUP_VERDICT } from './copy.js'
+import StandupStage from './StandupStage.jsx'
 
 const STORAGE_KEYS = {
   participants: 'standup-participants',
@@ -245,104 +246,6 @@ function EasterEggs({ elapsed }) {
   )
 }
 
-// SVG ring around the timer
-function TimerRing({ elapsed }) {
-  const r = 86
-  const circumference = 2 * Math.PI * r
-  const progress = Math.min(elapsed / RING_MAX_MS, 1)
-  const offset = circumference * (1 - progress)
-  const isIntense = elapsed >= PULSE_INTENSE_MS
-  const isPulsing = elapsed >= PULSE_START_MS
-
-  const cls = `timer-ring${isIntense ? ' timer-ring--intense' : isPulsing ? ' timer-ring--pulse' : ''}`
-
-  return (
-    <svg
-      className={cls}
-      width="200" height="200"
-      viewBox="0 0 200 200"
-      aria-hidden="true"
-    >
-      {/* Track */}
-      <circle
-        cx="100" cy="100" r={r}
-        fill="none"
-        stroke="var(--surface-3)"
-        strokeWidth="2"
-      />
-      {/* Progress arc */}
-      <circle
-        cx="100" cy="100" r={r}
-        fill="none"
-        stroke="var(--current)"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        transform="rotate(-90 100 100)"
-      />
-    </svg>
-  )
-}
-
-// Canvas ambient background — warm glow that grows with elapsed time
-function AmbientCanvas({ elapsed }) {
-  const canvasRef = useRef(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-
-    function resize() {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
-    return () => window.removeEventListener('resize', resize)
-  }, [])
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    const { width, height } = canvas
-
-    ctx.clearRect(0, 0, width, height)
-
-    // Opacity: flat until 1 min, grows 1→2 min, surges 2+ min
-    let opacity = 0
-    if (elapsed > PULSE_START_MS) {
-      const phase1 = Math.min((elapsed - PULSE_START_MS) / (PULSE_INTENSE_MS - PULSE_START_MS), 1)
-      opacity = phase1 * 0.28
-    }
-    if (elapsed > PULSE_INTENSE_MS) {
-      const phase2 = Math.min((elapsed - PULSE_INTENSE_MS) / 60_000, 1)
-      opacity += phase2 * 0.42
-    }
-
-    // Two overlapping radial gradients for depth
-    const cx = width / 2
-    const cy = height * 0.42
-
-    const g1 = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(width, height) * 0.55)
-    // Current color: warm coral oklch(0.70 0.17 38) ≈ #c4522b at full opacity
-    g1.addColorStop(0, `rgba(196, 82, 43, ${opacity})`)
-    g1.addColorStop(1, 'rgba(196, 82, 43, 0)')
-    ctx.fillStyle = g1
-    ctx.fillRect(0, 0, width, height)
-
-    // Second layer: amber tint at the very center
-    const g2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(width, height) * 0.25)
-    g2.addColorStop(0, `rgba(196, 138, 43, ${opacity * 0.6})`)
-    g2.addColorStop(1, 'rgba(196, 138, 43, 0)')
-    ctx.fillStyle = g2
-    ctx.fillRect(0, 0, width, height)
-  }, [elapsed])
-
-  return <canvas ref={canvasRef} className="ambient-canvas" aria-hidden="true" />
-}
 
 function withViewTransition(fn) {
   if (document.startViewTransition) {
@@ -372,6 +275,8 @@ export default function App() {
   const speakerStartRef = useRef(null)
   const intervalRef = useRef(null)
   const currentItemRef = useRef(null)
+  const rotationRef = useRef(rotation)
+  const speakerTimesRef = useRef({})
   const lastShakeRef = useRef(0)
 
   useEffect(() => {
@@ -386,7 +291,7 @@ export default function App() {
   useEffect(() => {
     if (phase === 'running') {
       intervalRef.current = setInterval(() => {
-        setElapsed(Date.now() - speakerStartRef.current)
+        if (speakerStartRef.current) setElapsed(Date.now() - speakerStartRef.current)
       }, 250)
     }
     return () => clearInterval(intervalRef.current)
@@ -403,9 +308,9 @@ export default function App() {
     }
   }, [Math.floor(elapsed / 1000)]) // check once per second
 
-  const currentItem = rotation.find(r => r.status === 'current') ?? null
-  currentItemRef.current = currentItem
-  const nextItem = rotation.find(r => r.status === 'pending') ?? null
+  currentItemRef.current = rotation.find(r => r.status === 'current') ?? null
+  rotationRef.current = rotation
+  speakerTimesRef.current = speakerTimes
   const doneCount = rotation.filter(r => r.status === 'done').length
   const activeCount = rotation.filter(r => r.status !== 'skipped').length
   const allDone = rotation.length > 0 && rotation.every(r => r.status === 'done' || r.status === 'skipped')
@@ -419,50 +324,75 @@ export default function App() {
 
   const startStandup = useCallback(() => {
     withViewTransition(() => {
-      setRotation(prev => {
-        const firstIdx = prev.findIndex(r => r.status === 'pending')
-        if (firstIdx === -1) return prev
-        return prev.map((r, i) => i === firstIdx ? { ...r, status: 'current' } : r)
-      })
+      setRotation(prev => prev.map(r =>
+        r.status === 'current' ? { ...r, status: 'pending' } : r
+      ))
+      speakerStartRef.current = null
       setSpeakerTimes({})
-      speakerStartRef.current = Date.now()
       setElapsed(0)
       setPhase('running')
     })
   }, [])
 
+  const skipQueued = useCallback((itemId) => {
+    setRotation(prev => prev.map(r =>
+      r.id === itemId ? { ...r, status: 'skipped' } : r
+    ))
+  }, [])
+
+  const selectSpeaker = useCallback((itemId) => {
+    const current = currentItemRef.current
+    const duration = current && speakerStartRef.current
+      ? Date.now() - speakerStartRef.current
+      : 0
+    if (current && duration > 0) {
+      setSpeakerTimes(prev => ({
+        ...prev,
+        [current.name]: (prev[current.name] ?? 0) + duration,
+      }))
+    }
+    const selectedName = rotationRef.current.find(r => r.id === itemId)?.name
+    const prevTime = speakerTimesRef.current[selectedName] ?? 0
+    setRotation(prev => prev.map(r => {
+      if (r.id === itemId) return { ...r, status: 'current' }
+      if (r.status === 'current') return { ...r, status: 'pending' }
+      return r
+    }))
+    speakerStartRef.current = Date.now() - prevTime
+    setElapsed(prevTime)
+  }, [])
+
   const advanceSpeaker = useCallback((skip = false) => {
-    const duration = Date.now() - speakerStartRef.current
+    const duration = speakerStartRef.current ? Date.now() - speakerStartRef.current : 0
     const current = currentItemRef.current
 
-    withViewTransition(() => {
-      setRotation(prev => {
-        const currentIdx = prev.findIndex(r => r.status === 'current')
-        if (currentIdx === -1) return prev
-        const updated = prev.map((r, i) =>
-          i === currentIdx ? { ...r, status: skip ? 'skipped' : 'done' } : r
-        )
-        const nextIdx = updated.findIndex((r, i) => i > currentIdx && r.status === 'pending')
-        if (nextIdx !== -1) {
-          updated[nextIdx] = { ...updated[nextIdx], status: 'current' }
-        }
-        return updated
-      })
-      if (!skip && current) {
-        setSpeakerTimes(prev => ({
-          ...prev,
-          [current.name]: (prev[current.name] ?? 0) + duration,
-        }))
-        // Show a remark if they went over 3 minutes
-        if (duration >= CHAOS_MS) {
-          const remark = LONG_SPEAKER_REMARKS[Math.floor(Math.random() * LONG_SPEAKER_REMARKS.length)]
-          setEpicRemark(remark)
-          setTimeout(() => setEpicRemark(null), 4000)
-        }
-      }
-      speakerStartRef.current = Date.now()
-      setElapsed(0)
+    const currentIdx = rotationRef.current.findIndex(r => r.status === 'current')
+    const nextItem = rotationRef.current.find((r, i) => i > currentIdx && r.status === 'pending')
+    const nextPrevTime = nextItem ? (speakerTimesRef.current[nextItem.name] ?? 0) : 0
+
+    setRotation(prev => {
+      const cIdx = prev.findIndex(r => r.status === 'current')
+      if (cIdx === -1) return prev
+      const updated = prev.map((r, i) =>
+        i === cIdx ? { ...r, status: skip ? 'skipped' : 'done' } : r
+      )
+      const nIdx = updated.findIndex((r, i) => i > cIdx && r.status === 'pending')
+      if (nIdx !== -1) updated[nIdx] = { ...updated[nIdx], status: 'current' }
+      return updated
     })
+    if (!skip && current) {
+      setSpeakerTimes(prev => ({
+        ...prev,
+        [current.name]: (prev[current.name] ?? 0) + duration,
+      }))
+      if (duration >= CHAOS_MS) {
+        const remark = LONG_SPEAKER_REMARKS[Math.floor(Math.random() * LONG_SPEAKER_REMARKS.length)]
+        setEpicRemark(remark)
+        setTimeout(() => setEpicRemark(null), 4000)
+      }
+    }
+    speakerStartRef.current = nextItem ? Date.now() - nextPrevTime : null
+    setElapsed(nextPrevTime)
   }, [])
 
   const resetStandup = useCallback(() => {
@@ -475,6 +405,7 @@ export default function App() {
       setPhase('idle')
     })
   }, [participants])
+
 
   const addParticipant = useCallback(() => {
     const name = newName.trim()
@@ -596,7 +527,7 @@ export default function App() {
         </div>
       )}
 
-      <main className="main">
+      <main className={`main${phase === 'running' ? ' main--stage' : ''}`}>
         {phase === 'idle' && (
           <div className="landing">
             <div className="landing-copy">
@@ -625,54 +556,19 @@ export default function App() {
         )}
 
         {phase === 'running' && (
-          <div className="stage">
-            <AmbientCanvas elapsed={elapsed} />
-
-            <div className="stage-progress" style={{ viewTransitionName: 'stage-progress' }}>
-              {doneCount + 1} / {activeCount}
-            </div>
-
-            <div className={`speaker-block${shaking ? ' speaker-block--shake' : ''}`}>
-              <div className="timer-wrap">
-                <TimerRing elapsed={elapsed} />
-                <div className="timer-number" aria-live="off">
-                  {formatTime(elapsed)}
-                </div>
-              </div>
-
-              <div
-                className="speaker-name"
-                style={{ viewTransitionName: 'speaker-name' }}
-              >
-                {currentItem?.name}
-              </div>
-              <div className="speaker-label">speaking</div>
-            </div>
-
-            {nextItem && (
-              <p className="up-next" style={{ viewTransitionName: 'up-next' }}>
-                up next — {nextItem.name}
-              </p>
-            )}
-
-            {epicRemark && (
-              <div className="epic-remark" key={epicRemark}>
-                {epicRemark}
-              </div>
-            )}
-
-            <div className="stage-controls">
-              <button className="btn btn-ghost" onClick={() => advanceSpeaker(true)}>
-                Skip
-              </button>
-              <button
-                className="btn btn-primary btn-next-large"
-                onClick={() => advanceSpeaker(false)}
-              >
-                {nextItem ? 'Next →' : 'Finish'}
-              </button>
-            </div>
-          </div>
+          <StandupStage
+            rotation={rotation}
+            elapsed={elapsed}
+            speakerTimes={speakerTimes}
+            shaking={shaking}
+            epicRemark={epicRemark}
+            doneCount={doneCount}
+            activeCount={activeCount}
+            onSelect={selectSpeaker}
+            onSkipQueued={skipQueued}
+            onNext={() => advanceSpeaker(false)}
+            onSkip={() => advanceSpeaker(true)}
+          />
         )}
 
         {phase === 'done' && (

@@ -5,6 +5,8 @@
 }
 
 :root {
+  --header-h: 52px;
+
   /* Warm dark palette — tinted toward amber (hue 55) */
   --bg:        oklch(0.13 0.010 50);
   --surface:   oklch(0.18 0.010 50);

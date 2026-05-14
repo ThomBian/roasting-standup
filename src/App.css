@@ -4,6 +4,11 @@
   grid-template-rows: auto auto 1fr;
 }
 
+/* Give grid a definite height when stage is active so 1fr resolves correctly */
+.app:has(.main--stage) {
+  height: 100dvh;
+}
+
 /* ── Header ─────────────────────────────────────── */
 .header {
   background: var(--surface);
