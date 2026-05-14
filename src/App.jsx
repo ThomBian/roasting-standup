@@ -324,10 +324,15 @@ export default function App() {
 
   const startStandup = useCallback(() => {
     withViewTransition(() => {
-      setRotation(prev => prev.map(r =>
-        r.status === 'current' ? { ...r, status: 'pending' } : r
-      ))
-      speakerStartRef.current = null
+      setRotation(prev => {
+        const reset = prev.map(r =>
+          r.status === 'current' ? { ...r, status: 'pending' } : r
+        )
+        const firstIdx = reset.findIndex(r => r.status === 'pending')
+        if (firstIdx !== -1) reset[firstIdx] = { ...reset[firstIdx], status: 'current' }
+        return reset
+      })
+      speakerStartRef.current = Date.now()
       setSpeakerTimes({})
       setElapsed(0)
       setPhase('running')
@@ -337,6 +342,12 @@ export default function App() {
   const skipQueued = useCallback((itemId) => {
     setRotation(prev => prev.map(r =>
       r.id === itemId ? { ...r, status: 'skipped' } : r
+    ))
+  }, [])
+
+  const unskipQueued = useCallback((itemId) => {
+    setRotation(prev => prev.map(r =>
+      r.id === itemId ? { ...r, status: 'pending' } : r
     ))
   }, [])
 
@@ -543,10 +554,33 @@ export default function App() {
                   : `${participants.length} people on deck.`}
               </p>
             </div>
+            {rotation.length > 0 && (() => {
+              let pendingPos = 0
+              return (
+                <ul className="order-list">
+                  {rotation.map(item => {
+                    const skipped = item.status === 'skipped'
+                    if (!skipped) pendingPos++
+                    const isFirst = !skipped && pendingPos === 1
+                    return (
+                      <li key={item.id} className={`order-item${isFirst ? ' order-item--first' : ''}${skipped ? ' order-item--skipped' : ''}`}>
+                        <span className="order-pos">{skipped ? '–' : pendingPos}</span>
+                        <span className="order-name">{item.name}</span>
+                        {skipped ? (
+                          <button className="order-unskip" onClick={() => unskipQueued(item.id)} aria-label={`Restore ${item.name}`}>↩</button>
+                        ) : (
+                          <button className="order-skip" onClick={() => skipQueued(item.id)} aria-label={`Skip ${item.name}`}>×</button>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )
+            })()}
             <button
               className="btn btn-start-landing"
               onClick={startStandup}
-              disabled={participants.length === 0}
+              disabled={participants.length === 0 || rotation.every(r => r.status === 'skipped')}
             >
               Start standup
             </button>

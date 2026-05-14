@@ -5,6 +5,84 @@
   initial-value: 0.28;
 }
 
+/* ── Announce overlay ────────────────────────────────────── */
+.announce-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  pointer-events: none;
+  background: var(--bg);
+  animation: announce-exit 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes announce-exit {
+  0%   { opacity: 1; }
+  65%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.announce-spotlight {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 55% 45% at 50% 50%,
+    oklch(0.70 0.17 38 / 0.22) 0%,
+    transparent 70%);
+  animation: spotlight-pulse 0.8s 0.1s ease-out both;
+}
+
+@keyframes spotlight-pulse {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.announce-label {
+  position: relative;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--current);
+  animation: announce-up 0.55s 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.announce-name {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(3.2rem, 9vw, 6.5rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  text-align: center;
+  padding: 0 var(--space-6);
+  line-height: 1;
+  animation: announce-stamp 0.65s 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes announce-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes announce-stamp {
+  from { opacity: 0; transform: scale(0.65) translateY(28px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announce-overlay,
+  .announce-spotlight,
+  .announce-label,
+  .announce-name {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
 /* ── Stage ───────────────────────────────────────────────── */
 .stage-od {
   position: fixed;

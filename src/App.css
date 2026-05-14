@@ -156,6 +156,131 @@
 }
 
 
+/* ── Order list ───────────────────────────────────── */
+.order-list {
+  list-style: none;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.order-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s var(--ease-out);
+}
+
+.order-item:hover {
+  background: var(--surface-2);
+}
+
+.order-item--first {
+  background: var(--accent-dim);
+  border-radius: var(--radius-sm);
+}
+
+.order-item--first:hover {
+  background: color-mix(in oklch, var(--accent-dim) 80%, var(--accent) 20%);
+}
+
+.order-pos {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1;
+}
+
+.order-item--first .order-pos {
+  color: var(--accent);
+}
+
+.order-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.order-item--first .order-name {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.order-skip {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1rem;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  padding: 0;
+}
+
+.order-item--skipped {
+  opacity: 0.4;
+}
+
+.order-item--skipped .order-name {
+  text-decoration: line-through;
+  color: var(--text-dim);
+}
+
+.order-item--skipped:hover {
+  opacity: 1;
+}
+
+.order-unskip {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  padding: 0;
+}
+
+.order-item--skipped:hover .order-unskip {
+  opacity: 1;
+}
+
+.order-unskip:hover {
+  background: var(--surface-3);
+  color: var(--accent);
+}
+
+.order-item:hover .order-skip {
+  opacity: 1;
+}
+
+.order-skip:hover {
+  background: var(--danger-dim);
+  color: var(--danger);
+}
+
 .btn-start-landing {
   font-family: var(--font-display);
   font-size: 1.1rem;

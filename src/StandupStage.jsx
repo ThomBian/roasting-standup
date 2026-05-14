@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import './StandupStage.css'
 
 const RING_MAX_MS      = 180_000
@@ -90,6 +90,14 @@ export default function StandupStage({
   const pendingItems = rotation.filter(r => r.status === 'pending')
   const doneItems    = rotation.filter(r => r.status === 'done' || r.status === 'skipped')
 
+  // Announce first speaker on mount
+  const [announcing, setAnnouncing] = useState(() => !!currentItem && doneCount === 0)
+  useEffect(() => {
+    if (!announcing) return
+    const id = setTimeout(() => setAnnouncing(false), 2000)
+    return () => clearTimeout(id)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Scroll tray to show "up next" whenever done section grows
   useEffect(() => {
     upNextRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' })
@@ -101,6 +109,14 @@ export default function StandupStage({
   return (
     <div className={`stage-od${shaking ? ' stage-od--shake' : ''}`}>
       <AmbientCanvas elapsed={elapsed} />
+
+      {announcing && currentItem && (
+        <div className="announce-overlay" aria-live="assertive" aria-atomic="true">
+          <div className="announce-spotlight" />
+          <span className="announce-label">up first</span>
+          <span className="announce-name">{currentItem.name}</span>
+        </div>
+      )}
 
       {/* Active speaker area */}
       <div className="active-slot">
