@@ -17,3 +17,4 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | $(date +%H:%M) | Overdrive: replaced running stage with StandupStage (FLIP animation, cards fly-in, spotlight glow, perf emoji stamps) | src/StandupStage.jsx, src/StandupStage.css, src/App.jsx, src/App.css | complete | ~4000 |
+| 22:30 | /distill whole app | StandupStage.jsx/css, App.jsx/css | removed speaking badge, progress counter, team pills, ~120 lines dead CSS | ~400 tok |
